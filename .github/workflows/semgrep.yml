@@ -1,0 +1,77 @@
+name: Semgrep
+on: [push, pull_request]
+jobs:
+
+  semgrep_json:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7.10' ]
+    name: Run Semgrep with JSON output
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run Semgrep with JSON output
+        run: |
+          python3 -m venv ./venv && source venv/bin/activate
+          pip install semgrep
+          semgrep --config=p/r2c-ci ./* --json > semgrep.json
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }}
+        with:
+          name: Semgrep report in JSON
+          path: semgrep.json
+
+  semgrep_sarif:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [ ubuntu-latest ]
+        python-version: [ '3.7.10' ]
+    name: Run Semgrep with Sarif output
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Setup Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Run Semgrep with Sarif output
+        run: |
+          python3 -m venv ./venv && source venv/bin/activate
+          pip install semgrep
+          semgrep --config=p/r2c-ci ./* --error > semgrep.txt
+          semgrep --config=p/r2c-ci ./* --sarif --error > semgrep.sarif
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }}
+        with:
+          name: Semgrep report in Sarif
+          path: semgrep.sarif
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v2
+        if: ${{ always() }}
+        with:
+          name: Semgrep report in TXT
+          path: semgrep.txt
+
+      - name: Upload SARIF file to CodeQL Action?
+        uses: github/codeql-action/upload-sarif@v1
+        if: ${{ always() }}
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: semgrep.sarif
+          
